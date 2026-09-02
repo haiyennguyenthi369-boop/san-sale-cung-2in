@@ -52,8 +52,14 @@ export default function App() {
 
     try {
       // Gọi sang Backend để bảo mật API Key
-      const response = await fetch("http://localhost:3001/api/convert", {
-        method: "POST",
+const response = await fetch("/api/convert", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ url }),
+});
+      method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
