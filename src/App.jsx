@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import {
   Clipboard,
   Copy,
@@ -51,15 +51,9 @@ export default function App() {
     setLoading(true);
 
     try {
-      // Gọi sang Backend để bảo mật API Key
-const response = await fetch("/api/convert", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ url }),
-});
-      method: "POST",
+      // Gọi sang API Serverless Function trên Vercel
+      const response = await fetch("/api/convert", {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
