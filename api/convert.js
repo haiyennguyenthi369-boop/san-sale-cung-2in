@@ -18,8 +18,20 @@ export default async function handler(req, res) {
   }
 
   try {
+    // 1. Giải mã link rút gọn (s.shopee.vn) thành link gốc
+    let targetUrl = url;
+    try {
+      const redirectResponse = await fetch(url, { method: "HEAD", redirect: "follow" });
+      if (redirectResponse.url) {
+        targetUrl = redirectResponse.url;
+      }
+    } catch (e) {
+      // Nếu không giải mã được thì dùng URL gốc người dùng nhập
+    }
+
+    // 2. Gọi API Shopee Affiliate GraphQL
     const timestamp = Math.floor(Date.now() / 1000);
-    const query = `query{generateUrlLink(originUrl:"${url}"){shortLink}}`;
+    const query = `mutation { generateUrlLink(input: { originUrl: "${targetUrl}" }) { shortLink } }`;
     const factor = appId + timestamp + query + appSecret;
     const signature = crypto.createHash("sha256").update(factor).digest("hex");
 
@@ -36,11 +48,15 @@ export default async function handler(req, res) {
     const shortLink = data?.data?.generateUrlLink?.shortLink;
 
     if (!shortLink) {
-      return res.status(400).json({ error: "Không lấy được link affiliate" });
+      console.error("Shopee API Error:", JSON.stringify(data));
+      return res.status(400).json({ 
+        error: data?.errors?.[0]?.message || "Không lấy được link affiliate. Hãy thử link gốc sản phẩm!" 
+      });
     }
 
     return res.status(200).json({ affiliateUrl: shortLink });
   } catch (err) {
+    console.error(err);
     return res.status(500).json({ error: "Lỗi kết nối API Shopee" });
   }
 }
