@@ -10,7 +10,6 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Thiếu URL Shopee" });
   }
 
-  // Lấy API key và cắt bỏ khoảng trắng dư thừa
   const appId = (process.env.SHOPEE_APP_ID || "").trim();
   const appSecret = (process.env.SHOPEE_APP_SECRET || "").trim();
 
@@ -19,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Giải mã link rút gọn s.shopee.vn thành link gốc
+    // 1. Mở rộng link rút gọn (s.shopee.vn) thành link gốc
     let targetUrl = url;
     try {
       const redirectResponse = await fetch(url, { method: "HEAD", redirect: "follow" });
@@ -27,19 +26,19 @@ export default async function handler(req, res) {
         targetUrl = redirectResponse.url;
       }
     } catch (e) {
-      // Giữ nguyên URL nếu không mở rộng được
+      // Giữ nguyên URL nếu gặp lỗi
     }
 
-    // 2. Tạo payload GraphQL
+    // 2. Chuẩn bị GraphQL Mutation (Sử dụng generateShortLink đúng chuẩn Shopee)
     const timestamp = Math.floor(Date.now() / 1000);
-    const query = `mutation { generateUrlLink(input: { originUrl: "${targetUrl}" }) { shortLink } }`;
+    const query = `mutation { generateShortLink(input: { originUrl: "${targetUrl}" }) { shortLink } }`;
     const payload = JSON.stringify({ query });
 
-    // 3. Tạo Signature chuẩn Shopee Open API: appId + timestamp + payload + appSecret
+    // 3. Tạo Signature
     const factor = appId + timestamp + payload + appSecret;
     const signature = crypto.createHash("sha256").update(factor).digest("hex");
 
-    // 4. Gọi Shopee Affiliate API
+    // 4. Gọi API Shopee Affiliate
     const response = await fetch("https://open-api.affiliate.shopee.vn/graphql", {
       method: "POST",
       headers: {
@@ -50,11 +49,13 @@ export default async function handler(req, res) {
     });
 
     const data = await response.json();
-    const shortLink = data?.data?.generateUrlLink?.shortLink;
+    const shortLink = data?.data?.generateShortLink?.shortLink;
 
     if (!shortLink) {
       console.error("Shopee API Error:", JSON.stringify(data));
-      return res.status(400).json({ error: data?.errors?.[0]?.message || "Không tạo được link affiliate" });
+      return res.status(400).json({ 
+        error: data?.errors?.[0]?.message || "Không lấy được link affiliate" 
+      });
     }
 
     return res.status(200).json({ affiliateUrl: shortLink });
